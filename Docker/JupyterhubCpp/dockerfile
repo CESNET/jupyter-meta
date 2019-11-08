@@ -1,0 +1,59 @@
+FROM ubuntu:18.04
+LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
+
+# install nodejs, utf8 locale, set CDN because default httpredir is unreliable
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get -y update && \
+    apt-get -y upgrade && \
+    apt-get -y install wget git bzip2 libpam-krb5 && \
+    apt-get purge && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+ENV LANG C.UTF-8
+
+# install Python + NodeJS with conda
+RUN wget -q https://repo.continuum.io/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O /tmp/miniconda.sh  && \
+    echo 'e1045ee415162f944b6aebfe560b8fee */tmp/miniconda.sh' | md5sum -c - && \
+    bash /tmp/miniconda.sh -f -b -p /opt/conda && \
+    /opt/conda/bin/conda install --yes -c conda-forge \
+      python=3.6 sqlalchemy tornado jinja2 traitlets requests pip pycurl \
+      nodejs configurable-http-proxy notebook xeus-cling && \
+    /opt/conda/bin/pip install --upgrade pip && \
+    rm /tmp/miniconda.sh
+ENV PATH=/opt/conda/bin:$PATH
+
+ADD . /src/jupyterhub
+WORKDIR /src/jupyterhub
+
+RUN pip install jupyterhub && \
+    rm -rf $PWD ~/.cache ~/.npm
+
+RUN mkdir -p /srv/jupyterhub/
+WORKDIR /srv/jupyterhub/
+
+LABEL org.jupyter.service="jupyterhub"
+
+RUN useradd -rm -d /home/test -s /bin/bash -g root -G sudo -u 1000 test -p "$(openssl passwd -1 test)"
+RUN useradd -rm -d /home/nikl -s /bin/bash -g root -G sudo -u 1001 nikl -p "$(openssl passwd -1 nikl)"
+RUN useradd -rm -d /home/rudamir -s /bin/bash -g root -G sudo -u 1002 rudamir -p "$(openssl passwd -1 rudamir)"
+
+RUN wget https://metavo.metacentrum.cz/krb5.conf && \
+    cp krb5.conf /etc/krb5.conf
+
+#COPY kerberos2.class kerberos2.class
+
+CMD ["jupyterhub", "--generate-config"]
+#RUN cat kerberos2.class >> jupyterhub_config.py && echo "OK"
+
+#RUN echo "c.Authenticator.admin_users = {'nikl'}" >> jupyterhub_config.py
+RUN echo "c.PAMAuthenticator.admin_users = {'nikl','rudamir'}" >> jupyterhub_config.py
+RUN echo "c.JupyterHub.ip = '0.0.0.0'" >> jupyterhub_config.py
+RUN echo "c.JupyterHub.port = 8010" >> jupyterhub_config.py
+EXPOSE 8010
+
+#CMD ["jupyterhub"]
+
+COPY jupyterhub.key jupyterhub.key
+COPY jupyterhub.crt jupyterhub.crt
+
+CMD ["jupyterhub", "--ssl-key", "jupyterhub.key", "--ssl-cert", "jupyterhub.crt"]
