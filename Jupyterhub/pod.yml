@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jupyterhubdockercppkrb-pbs
+spec:
+  hostname: jupyter-cloud-metacentrum-cz
+  restartPolicy: Always
+  dnsPolicy: ClusterFirst
+  nodeName: jupyter-master
+  containers:
+  - name: jupyterhubdockercppkrb-pbs
+    image: jupyterhubdockercppkrb-pbs
+    imagePullPolicy: Never
+    ports:
+      - containerPort: 443
+        protocol: TCP
+    volumeMounts:
+    - mountPath: /tmp
+      name: tmp
+    - mountPath: /storage
+      name: storage
+    - mountPath: /home   
+      name: home
+    - mountPath: /etc/passwd
+      name: passwd
+    - mountPath: /etc/group                
+      name: group
+  volumes:
+  - name: tmp
+    hostPath:
+      # Ensure the file directory is created.
+      path: /tmp
+      type: DirectoryOrCreate
+
+  - name: storage
+    hostPath:
+      # Ensure the file directory is created.
+      path: /storage
+      type: DirectoryOrCreate
+  - name: home
+    hostPath:
+      # Ensure the file directory is created.
+      path: /home
+      type: DirectoryOrCreate
+  - name: passwd
+    hostPath:
+      path: /etc/passwd
+      type: FileOrCreate
+  - name: group
+    hostPath:
+      path: /etc/group
+      type: FileOrCreate
+
