@@ -47,9 +47,9 @@ ENV SHELL=/bin/bash \
     LANG=en_US.UTF-8 \
     LANGUAGE=en_US.UTF-8
 
-RUN service rpcbind start \
- && service ssh start \
- && service nfs-common start; exit 0
+#RUN service rpcbind start \
+# && service ssh start \
+# && service nfs-common start; exit 0
 
 RUN locale-gen $LC_ALL
 
@@ -64,18 +64,35 @@ WORKDIR /src/jupyterhub
 # always make sure pip is up to date!
 RUN python3 -m pip install --no-cache --upgrade wheel setuptools pip
 
-RUN npm install -g configurable-http-proxy@^4.2.0 \
+#RUN apt remove -y nodejs npm &&  npm install -g npm@latest
+
+#RUN apt update && apt install curl && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
+
+RUN npm install -g n \
+ && export PATH="/usr/local/bin/node:$PATH" \
+ && n 16 \
+ && export PATH="/usr/local/bin/node:$PATH" \
+ && npm install -g npm 
+
+RUN npm install -g configurable-http-proxy \
  && rm -rf ~/.npm
+
+# && hash -d npm \
 
 # Build client component packages (they will be copied into ./share and
 # packaged with the built wheel.)
 #RUN npm install
 #RUN python3 -m pip wheel --wheel-dir wheelhouse .
 # && pip install batchspawner \
-RUN pip install jupyterhub \
- && pip install notebook \
- && rm -rf ~/.cache ~/.npm 
+#RUN pip install jupyterhub \
+# && pip install notebook \
+# && rm -rf ~/.cache ~/.npm 
 #$PWD  
+
+#RUN pip install git+git://github.com/jupyterhub/jupyterhub.git
+RUN pip install jupyterhub
+#RUN pip install git+git://github.com/jupyter/notebook.git
+RUN pip install notebook
 
 LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
 LABEL org.jupyter.service="jupyterhub"
@@ -110,13 +127,13 @@ COPY jupyter.pem jupyter.pem
 #COPY batchspawner.py /src/jupyterhub/batchspawner/batchspawner/batchspawner.py
 #RUN cd batchspawner && pip install -e . && cd ..
 #COPY batchspawner.py /usr/local/lib/python3.6/dist-packages/batchspawner/batchspawner.py
-RUN pip install git+git://github.com/jupyterhub/batchspawner.git
+RUN pip install git+https://github.com/jupyterhub/batchspawner.git
 
 #RUN git clone https://github.com/jupyterhub/wrapspawner.git
 #RUN cd wrapspawner && pip install -e . && cd ..
-RUN pip install git+git://github.com/jupyterhub/wrapspawner.git
+RUN pip install git+https://github.com/jupyterhub/wrapspawner.git
 
-RUN pip install git+git://github.com/jupyterhub/kubespawner.git
+#RUN pip install git+https://github.com/jupyterhub/kubespawner.git
 
 RUN git clone https://github.com/root-project/cling.git \
  && cd cling/tools/Jupyter/kernel && pip install -e . \
@@ -125,7 +142,11 @@ RUN git clone https://github.com/root-project/cling.git \
  && jupyter-kernelspec install cling-cpp14 \
  && jupyter-kernelspec install cling-cpp1z
 
-RUN pip install git+git://github.com/andreinechaev/nvcc4jupyter.git
+RUN pip install git+https://github.com/andreinechaev/nvcc4jupyter.git
+
+COPY jupyterhub-options-spawner/ /src/jupyterhub/jupyterhub-options-spawner/
+RUN cd jupyterhub-options-spawner/ && pip install --no-deps .
+
 
 # PAM_KRB5CCNAME is not set when opening the session for some reason and so we have to
 # explicitly retain the cache created during auth instead.
@@ -166,17 +187,29 @@ RUN chmod +x qstat-merge.sh
 #RUN for i in /home/*; do USER=$(echo $i | awk -F '/' '{print $3}'); chown -R $USER:meta $i; done
 
 EXPOSE 443
-#EXPOSE 8081
+EXPOSE 8081
 EXPOSE 8082
 EXPOSE 88/udp
 
+RUN /usr/bin/yes | pip uninstall jupyterhub && pip install jupyterhub==1.4.1
+RUN /usr/bin/yes | pip uninstall batchspawner && pip install batchspawner==1.1.0
+RUN /usr/bin/yes | pip uninstall wrapspawner && pip install wrapspawner==1.0.0
+
+#RUN for i in {1..999999999}; do cmp --silent /etc/passwd /src/jupyterhub/passwd-copy.txt || cat /src/jupyterhub/passwd-copy.txt > /etc/passwd ; sleep 600; done &
+
+RUN pip install tornado==5.1.1
+
 COPY config.py config.py
 RUN cat config.py >> jupyterhub_config.py
-
 #kubernetes sets default hostname at 'kubectl run...' to the pod name, which we 
 #dont want, however hostname command is blocked 
 #RUN hostname -b jupyter.cloud.metacentrum.cz
 
+#generate these cert and key by
+#sudo certbot certonly --standalone -d jupyter.cloud.metacentrum.cz
+COPY fullchain.pem fullchain.pem
+COPY privkey.pem privkey.pem
+
+EXPOSE 8443
 #CMD ["jupyterhub"]
-CMD ["jupyterhub", "--ssl-key", "jupyter.key", "--ssl-cert", "jupyter.pem"]
-#CMD ["jupyterhub", "--ssl-key", "jupyter-unsigned.key", "--ssl-cert", "jupyter-unsigned.crt"]
+CMD ["jupyterhub", "--ssl-key", "privkey.pem", "--ssl-cert", "fullchain.pem"]

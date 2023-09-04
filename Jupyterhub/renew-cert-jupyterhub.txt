@@ -1,0 +1,3 @@
+#!/bin/sh
+
+certbot certonly --standalone -d jupyter.cloud.metacentrum.cz

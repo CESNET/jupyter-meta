@@ -1,6 +1,7 @@
 #!/bin/bash
 
 image='jupyterhubdockercppkrb-pbs'
+#image='jupyterhub-image-12345'
 containerPort='443'
 servicePort='443'
 
@@ -19,12 +20,15 @@ GREEN='\033[0;32m'
 
 echo -e "${LCYAN}Building docker image $image...${NC}"
 docker image build --network host -t $image .
-echo -e "${LCYAN}Done${NC} \$?=$?"
+exit_code=$?
+#exit_code=0
+echo -e "${LCYAN}Done${NC} \$?=$exit_code"
 
-if [ $? -ne 0 ]
+if [ $exit_code -ne 0 ]
 then
   exit -1
 fi
+
 
 echo -e "${LCYAN}Deleting old container $image...${NC}"
 kubectl delete -n default  deployment $image

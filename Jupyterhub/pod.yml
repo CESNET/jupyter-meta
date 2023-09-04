@@ -23,8 +23,8 @@ spec:
       name: home
     - mountPath: /etc/passwd
       name: passwd
-    - mountPath: /etc/group                
-      name: group
+    - mountPath: /src/jupyterhub/passwdcopy.txt
+      name: passwd-copy              
   volumes:
   - name: tmp
     hostPath:
@@ -46,8 +46,7 @@ spec:
     hostPath:
       path: /etc/passwd
       type: FileOrCreate
-  - name: group
+  - name: passwd-copy
     hostPath:
-      path: /etc/group
+      path: /etc/passwd
       type: FileOrCreate
-
