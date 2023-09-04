@@ -24,8 +24,6 @@ Other files
 ===========
 The rest of the files are necessary to enable proper functioning of the hub.
 
-jupyter.key jupyter.pem - signed certificate and key to run jupyterhub as https  
-
 kerberosPAM.py - fixes kerberos ticket flushing into /tmp/krb5cc_{uid} when loggin into jupyterhub  
 
 pbs/ - folder with necessary deb packages to allow using PBS and submitting jobs, I did not find an easy way 
